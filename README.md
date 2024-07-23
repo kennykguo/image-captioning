@@ -20,4 +20,6 @@ Generated Caption: polar bear swimming by large wave <END>
 
 ## Inspiration
 
-This project was inspired by the following papers - https://cs.stanford.edu/people/karpathy/cvpr2015.pdf, https://arxiv.org/pdf/1411.4555
+This project was inspired by the following papers:
+- https://cs.stanford.edu/people/karpathy/cvpr2015.pdf
+- https://arxiv.org/pdf/1411.4555
