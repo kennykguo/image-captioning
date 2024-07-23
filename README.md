@@ -4,9 +4,8 @@ This repository contains my implementation of an image captioning model. The mod
 
 ## Project Overview
 
-- Developed a deep learning model that combines computer vision and natural language processing
-- Implemented from scratch using PyTorch
-- Explored various architectures including CNNs for image feature extraction and RNNs/Transformers for caption generation
+- I used several different model architectures such as CNN-LSTMs and CNN-Transformers.
+- The project involves the MSCOCO2017 dataset. I initially used the Flickr30k, but I found that my captioning results were much better on MSCOCO2017, most likely because it has more data.
 
 ## Results
 
