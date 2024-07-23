@@ -1,4 +1,4 @@
-# Image Captioning Project
+# Image Captioning
 
 This repository contains my implementation of an image captioning model. The model takes an image as input and generates a descriptive English caption.
 
