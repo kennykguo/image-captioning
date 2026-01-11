@@ -1,0 +1,7 @@
+numpy
+pillow
+torch
+torchvision
+nltk
+# Optional COCO eval metrics (CIDEr/SPICE):
+# git+https://github.com/salaniz/pycocoevalcap
