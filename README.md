@@ -1,34 +1,34 @@
 # Image captioning
 
-An image goes in, a sentence comes out.
+A friend challenged me to build an image captioning model when I had no deep learning experience. I spent my first year summer working through the history of deep learning, starting with LSTMs and later moving to Transformers. I wanted to understand the models well enough to build the captioning system myself, including the word tokenizer, data loading, training, and inference.
+
+I came back to the project later with a vision transformer as the image encoder. The older notebooks are still here, so you can follow the progression. The latest version is in [the January 8 notebook](01-08-26-coco2017-image-captioning.ipynb).
+
+## From an image to words
+
+The model needs some representation of the image that it can use to predict a caption. The earlier experiments used ResNet-50 to produce one image vector. In the current version, I use a pretrained ViT-B/16 and keep its patch features.
 
 ![A fox image beside the same image split into patches](images/readme/fox-patches.jpg)
 
-## Why I built this
+The input is cropped to 224 × 224 pixels, then divided into 16 × 16 patches. That gives 196 patches. Each patch becomes a vector, and the ViT processes those vectors together, along with a class token. Instead of using the final classification output, I take this sequence of features and project it from 768 dimensions to 512.
 
-A friend challenged me to build an image captioning model. I had no deep learning experience at the time, so this became a speedrun of the research and a way to learn by building something that actually worked.
+Keeping the sequence gives the caption decoder several image features to attend to as it generates words. The patch illustration above just shows how the image is divided up; the grid doesn't show what the model is paying attention to.
 
-I started with LSTMs, then tried Transformers, and came back to the project with a ViT image encoder. Along the way I wrote the word tokenizer, data loading, training loop, and inference code. The older notebooks are still here because they show where I started.
+The decoder has four Transformer layers with eight attention heads. It uses the image features and the words so far to predict the next word. For example, after seeing `a person`, it produces a distribution over what could follow. The chosen word is added to the sequence, and the process repeats until `<END>` or the length limit. The notebooks include greedy decoding, beam search, and top-p sampling.
 
-## How it works
+During training, I already have the complete caption. I shift it by one word, so the input might be `<START> a person` while the target is `a person skiing`. A causal mask keeps each position from looking ahead at the answer. The loss compares the predictions with the target words and ignores padding.
 
-The current model is in [the January 8 notebook](01-08-26-coco2017-image-captioning.ipynb).
+## Turning words into numbers
 
-The image is cropped to 224 × 224 pixels and passed through a pretrained ViT-B/16. It splits the image into 196 patches of 16 × 16 pixels, adds a class token, and turns those into a sequence of features. I keep those patch features instead of taking the final classification output. A linear layer projects them from 768 dimensions to 512 for the caption decoder.
+The tokenizer is a dictionary built from the training captions. I lowercase the text, remove punctuation, and count the words. Words appearing fewer than five times become `<UNK>`. Each remaining word gets an integer ID, with four reserved IDs for `<PAD>`, `<START>`, `<END>`, and `<UNK>`. The model looks up a learned embedding for each ID, and I use the reverse dictionary to turn its predictions back into words.
 
-The decoder is a four-layer Transformer with eight attention heads. It attends to the image features and the words it has already seen to predict the next word. During training, I feed it a caption shifted by one word and compare its predictions with the next words in the original caption. Padding is ignored in the loss.
+The current encoder uses pretrained ImageNet weights from torchvision and stays frozen during training. The decoder uses PyTorch's Transformer layers. I wrote the captioning model and the pipeline around these components; the older notebooks include my earlier implementations.
 
-The tokenizer is a word dictionary built from the training captions. Captions are lowercased, punctuation is removed, and words appearing fewer than five times become `<UNK>`. I add `<START>`, `<END>`, and `<PAD>` tokens, then map words to integer IDs. There's no pretrained text tokenizer or language model in this version.
-
-The ViT uses ImageNet weights from torchvision and is frozen in the current training configuration. The decoder uses PyTorch's Transformer layers. The captioning model and pipeline are my own implementation around those components.
-
-At inference, decoding starts with `<START>` and continues until `<END>` or the length limit. The notebooks include greedy decoding, beam search, and top-p sampling.
-
-## Some examples
+## Some outputs
 
 ![Deer, fox, and skiing photos used in the saved inference run](images/readme/sample-images.jpg)
 
-These are captions from the saved run in [benchmark.ipynb](benchmark.ipynb):
+These are saved outputs from [benchmark.ipynb](benchmark.ipynb):
 
 | Image | Model caption |
 | --- | --- |
@@ -36,11 +36,9 @@ These are captions from the saved run in [benchmark.ipynb](benchmark.ipynb):
 | Fox | a brown and white cat standing next to a tree |
 | Deer | a couple of giraffe standing next to each other |
 
-The skiing caption is pretty reasonable. The fox and deer are good examples of what still goes wrong: the sentence can sound plausible while getting the animal completely wrong.
+The skiing caption makes sense. The fox gets called a cat, and the deer become giraffes. The model has learned enough about sentences to produce something that sounds reasonable, even when it gets the actual subject wrong.
 
-The patch images in this README show how the input is divided up. They aren't attention maps or model predictions. All three text-free visuals are in [images/readme/](images/readme/).
-
-## Finding your way around
+## The notebooks
 
 | Notebook | What's in it |
 | --- | --- |
@@ -51,7 +49,7 @@ The patch images in this README show how the input is divided up. They aren't at
 | [07-01-24-lstm-flickr30k-image-captioning.ipynb](07-01-24-lstm-flickr30k-image-captioning.ipynb) | Early LSTM experiment on Flickr30k. |
 | [07-01-24-vanilla-transformer-flickr30k-image-captioning.ipynb](07-01-24-vanilla-transformer-flickr30k-image-captioning.ipynb) | Early Transformer experiment on Flickr30k. |
 
-## Running it
+## Run it
 
 From the repo root:
 
@@ -63,7 +61,7 @@ pip install jupyterlab matplotlib
 jupyter lab
 ```
 
-The code lives in notebooks; there isn't a separate training or inference CLI. Run them with the repo root as the working directory. The January training notebooks were written on Kaggle, so their dataset paths need changing for a local run.
+Run the notebooks from the repo root. The January training notebooks were written on Kaggle, so change the dataset paths before running them locally.
 
 ### Caption your own images
 
@@ -104,7 +102,7 @@ The saved benchmark used **100 randomly sampled COCO val2017 images**, seed 0, w
 
 That run took 132.62 seconds, or 0.754 images per second. The hardware wasn't recorded with the result.
 
-These are the notebook's metrics on a small validation sample. BLEU and METEOR use NLTK, ROUGE-L uses the notebook's LCS implementation, and CIDEr uses `pycocoevalcap`. This isn't a full COCO evaluation using the official evaluation pipeline.
+These numbers only cover the 100 sampled images. BLEU and METEOR use NLTK, ROUGE-L uses the notebook's LCS implementation, and CIDEr uses `pycocoevalcap`.
 
 To repeat the setup, set `RUN_COCO = True`, check `COCO_IMAGES_DIR` and `COCO_ANN_JSON`, and leave `COCO_EVAL_N = 100`. For METEOR and CIDEr, also install:
 
